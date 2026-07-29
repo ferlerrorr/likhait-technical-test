@@ -95,7 +95,11 @@ export async function createExpense(data: ExpenseFormData): Promise<Expense> {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create expense");
+    // BONUS-001: read the 422 body so validation messages reach the form instead of being discarded
+    const body: { errors?: string[] } | null = await response
+      .json()
+      .catch(() => null);
+    throw new Error(body?.errors?.join(", ") ?? "Failed to create expense");
   }
 
   return response.json();

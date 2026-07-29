@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from "react";
 import { ExpenseFormData } from "../types";
 import { fetchCategories } from "../services/api";
+import { formatDate } from "../utils/expenseUtils";
 import { TextField, SelectBox, Button } from "../vibes";
 import { useExpenseForm } from "../hooks/useExpenseForm";
 
@@ -92,6 +93,8 @@ export function ExpenseForm({
       <TextField
         label="Date"
         type="date"
+        // BONUS-001: stop the picker offering future days; the model validation is the real guard
+        max={formatDate(new Date())}
         value={formData.date}
         onChange={(e) => handleChange("date", e.target.value)}
         error={errors.date}

@@ -47,6 +47,9 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
 
     if (!formData.date) {
       newErrors.date = "Date is required";
+    } else if (formData.date > formatDate(new Date())) {
+      // BONUS-001: block future dates client-side too; the model validation is the real guard
+      newErrors.date = "Date cannot be in the future";
     }
 
     setErrors(newErrors);
@@ -73,6 +76,12 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
       setErrors({});
     } catch (error) {
       console.error("Form submission error:", error);
+      // BONUS-001: show the server's message instead of only logging it. `errors` is keyed by
+      // field and the future-date rule is the only server-side validation today, so it lands on date.
+      setErrors((prev) => ({
+        ...prev,
+        date: error instanceof Error ? error.message : "Failed to save expense",
+      }));
     } finally {
       setIsSubmitting(false);
     }
