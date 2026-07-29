@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { getExpenses, createExpense } from "../services/api";
+import { getExpenses, createExpense, createCategory } from "../services/api";
 import { Expense, ExpenseFormData } from "../types";
 import YearNavigation from "../components/YearNavigation";
 import { MonthNavigation } from "../components/MonthNavigation";
 import CategoryBreakdown from "../components/CategoryBreakdown";
 import { CalendarExpenseTable } from "../components/CalendarExpenseTable";
 import { ExpenseForm } from "../components/ExpenseForm";
-import { Modal, Button } from "../vibes";
+import { Modal, Button, TextField } from "../vibes";
 import { COLORS } from "../constants/colors";
 
 const HistoryPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // FEATURE-001: state for the "Add Category" modal
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | undefined>();
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
 
   // Get year and month from URL params, default to current date if not provided
   const getInitialYearMonth = () => {
@@ -82,6 +88,26 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  // FEATURE-001: persists a new category, then closes the modal. The expense form refetches its
+  // options whenever it opens, so no further refresh is needed here.
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCategory(true);
+    setCategoryError(undefined);
+
+    try {
+      await createCategory(categoryName);
+      setCategoryName("");
+      setIsCategoryModalOpen(false);
+    } catch (error) {
+      setCategoryError(
+        error instanceof Error ? error.message : "Failed to create category",
+      );
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
   // Calculate category breakdown
   const categoryData = expenses.reduce(
     (acc, expense) => {
@@ -121,6 +147,24 @@ const HistoryPage: React.FC = () => {
     gap: "24px",
   };
 
+  // FEATURE-001: holds "Add Category" beside the existing "Add Expense" button
+  const headerActionsStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  };
+
+  const categoryFormStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  };
+
+  const categoryButtonGroupStyle: React.CSSProperties = {
+    display: "flex",
+    gap: "0.5rem",
+  };
+
   const titleStyle: React.CSSProperties = {
     fontSize: "40px",
     fontWeight: 700,
@@ -148,9 +192,17 @@ const HistoryPage: React.FC = () => {
             onYearChange={handleYearChange}
           />
         </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-          Add Expense
-        </Button>
+        <div style={headerActionsStyle}>
+          <Button
+            variant="secondary"
+            onClick={() => setIsCategoryModalOpen(true)}
+          >
+            Add Category
+          </Button>
+          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       <MonthNavigation
@@ -188,6 +240,44 @@ const HistoryPage: React.FC = () => {
           onSubmit={handleAddExpense}
           onCancel={() => setIsModalOpen(false)}
         />
+      </Modal>
+
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Add New Category"
+      >
+        <form onSubmit={handleAddCategory} style={categoryFormStyle}>
+          <TextField
+            label="Category Name"
+            type="text"
+            placeholder="Enter category name"
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
+            error={categoryError}
+            fullWidth
+            required
+          />
+
+          <div style={categoryButtonGroupStyle}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSavingCategory}
+              fullWidth
+            >
+              {isSavingCategory ? "Saving..." : "Add Category"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsCategoryModalOpen(false)}
+              disabled={isSavingCategory}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
