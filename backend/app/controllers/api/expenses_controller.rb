@@ -1,6 +1,9 @@
 class Api::ExpensesController < ApplicationController
+  # Lists expenses newest expense date first, optionally narrowed to a single month.
   def index
-    expenses = Expense.includes(:category).order(created_at: :desc)
+    # BUG-001: order by date, not created_at. created_at is kept only as a tie-break so a
+    # just-added expense still sits at the top of its own date.
+    expenses = Expense.includes(:category).order(date: :desc, created_at: :desc)
 
     if params[:year].present? && params[:month].present?
       year = params[:year].to_i
@@ -9,7 +12,9 @@ class Api::ExpensesController < ApplicationController
       start_date = Date.new(year, month, 1)
       end_date = start_date.end_of_month
 
-      expenses = expenses.where(created_at: start_date.beginning_of_day..end_date.end_of_day)
+      # BUG-001: filter on date as well — filtering by created_at returned rows whose expense
+      # date belonged to a different month, which hid the ordering fix entirely.
+      expenses = expenses.where(date: start_date..end_date)
     end
 
     render json: expenses.map { |expense| format_expense(expense) }
